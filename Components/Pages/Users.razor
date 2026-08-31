@@ -1,0 +1,162 @@
+@page "/users"
+@using Buck2bar.Models
+
+<PageTitle>Users</PageTitle>
+
+<h1>Users</h1>
+
+<RadzenRow Gap="1rem">
+    <RadzenColumn Size="12" SizeLG="6">
+        <RadzenCard class="rz-p-4" Variant="Variant.Outlined">
+            <RadzenText TextStyle="TextStyle.H6">User List</RadzenText>
+            <RadzenDataGrid TItem="User" Data="@users" RowSelect="@OnRowSelect" AllowPaging="true" PageSize="5">
+                <Columns>
+                    <RadzenDataGridColumn TItem="User" Property="Id" Title="ID" Width="80px" />
+                    <RadzenDataGridColumn TItem="User" Property="Name" Title="Name" />
+                    <RadzenDataGridColumn TItem="User" Property="Email" Title="Email" />
+                    <RadzenDataGridColumn TItem="User" Property="Role" Title="Role" />
+                    <RadzenDataGridColumn TItem="User" Property="IsActive" Title="Active" Width="100px" />
+                </Columns>
+            </RadzenDataGrid>
+        </RadzenCard>
+    </RadzenColumn>
+
+    <RadzenColumn Size="12" SizeLG="6">
+        <RadzenCard class="rz-p-4" Variant="Variant.Outlined">
+            <RadzenText TextStyle="TextStyle.H6">Edit User</RadzenText>
+
+            <RadzenTemplateForm TItem="User" Data="@editModel" Submit="@OnSave">
+                <DataAnnotationsValidator />
+
+                <RadzenStack Gap="0.75rem">
+                    <RadzenStack Orientation="Orientation.Horizontal" Gap="0.75rem" Wrap="FlexWrap.Wrap">
+                        <RadzenButton Text="New" ButtonStyle="ButtonStyle.Secondary" Click="@CreateNew" />
+                        <RadzenButton Text="Save" ButtonType="ButtonType.Submit" ButtonStyle="ButtonStyle.Primary" />
+                        <RadzenButton Text="Delete" ButtonStyle="ButtonStyle.Danger" Click="@DeleteSelected" Disabled="@(!CanDelete)" />
+                    </RadzenStack>
+
+                    <RadzenRow Gap="1rem">
+                        <RadzenColumn Size="12" SizeMD="6">
+                            <RadzenLabel Text="Name" Component="Name" />
+                            <RadzenTextBox Name="Name" Style="width: 100%;" @bind-Value="editModel.Name" />
+                            <RadzenRequiredValidator Component="Name" Text="Name is required" Popup="false" />
+                        </RadzenColumn>
+
+                        <RadzenColumn Size="12" SizeMD="6">
+                            <RadzenLabel Text="Email" Component="Email" />
+                            <RadzenTextBox Name="Email" Style="width: 100%;" @bind-Value="editModel.Email" />
+                            <RadzenRequiredValidator Component="Email" Text="Email is required" Popup="false" />
+                            <RadzenRegexValidator Component="Email" Pattern="@EmailPattern" Text="Enter a valid email" Popup="false" />
+                        </RadzenColumn>
+
+                        <RadzenColumn Size="12" SizeMD="6">
+                            <RadzenLabel Text="Role" Component="Role" />
+                            <RadzenDropDown Name="Role" Data="@roles" Style="width: 100%;" @bind-Value="editModel.Role" />
+                            <RadzenRequiredValidator Component="Role" Text="Role is required" Popup="false" />
+                        </RadzenColumn>
+
+                        <RadzenColumn Size="12" SizeMD="6">
+                            <RadzenLabel Text="Active" Component="IsActive" />
+                            <RadzenSwitch Name="IsActive" @bind-Value="editModel.IsActive" />
+                        </RadzenColumn>
+                    </RadzenRow>
+                </RadzenStack>
+            </RadzenTemplateForm>
+        </RadzenCard>
+    </RadzenColumn>
+</RadzenRow>
+
+@code {
+    private const string EmailPattern = @"^\S+@\S+\.\S+$";
+
+    private readonly List<string> roles = ["Admin", "User", "Viewer"];
+
+    private readonly List<User> users =
+    [
+        new User { Id = 1, Name = "Alice Brown", Email = "alice@example.com", Role = "Admin", IsActive = true },
+        new User { Id = 2, Name = "Bob Clark", Email = "bob@example.com", Role = "User", IsActive = true },
+        new User { Id = 3, Name = "Carla Diaz", Email = "carla@example.com", Role = "Viewer", IsActive = false }
+    ];
+
+    private User editModel = new();
+    private int? selectedUserId;
+    private int nextId;
+
+    private bool CanDelete => selectedUserId.HasValue;
+
+    protected override void OnInitialized()
+    {
+        nextId = users.Max(u => u.Id) + 1;
+        CreateNew();
+    }
+
+    private void OnRowSelect(User user)
+    {
+        selectedUserId = user.Id;
+        editModel = CloneUser(user);
+    }
+
+    private void CreateNew()
+    {
+        selectedUserId = null;
+        editModel = new User
+        {
+            Role = roles[1],
+            IsActive = true
+        };
+    }
+
+    private void OnSave(User _)
+    {
+        if (selectedUserId.HasValue)
+        {
+            var existing = users.FirstOrDefault(u => u.Id == selectedUserId.Value);
+            if (existing is null)
+            {
+                return;
+            }
+
+            existing.Name = editModel.Name;
+            existing.Email = editModel.Email;
+            existing.Role = editModel.Role;
+            existing.IsActive = editModel.IsActive;
+            editModel = CloneUser(existing);
+            return;
+        }
+
+        var newUser = CloneUser(editModel);
+        newUser.Id = nextId++;
+        users.Add(newUser);
+        selectedUserId = newUser.Id;
+        editModel = CloneUser(newUser);
+    }
+
+    private void DeleteSelected()
+    {
+        if (!selectedUserId.HasValue)
+        {
+            return;
+        }
+
+        var existing = users.FirstOrDefault(u => u.Id == selectedUserId.Value);
+        if (existing is null)
+        {
+            return;
+        }
+
+        users.Remove(existing);
+        CreateNew();
+    }
+
+    private static User CloneUser(User user)
+    {
+        return new User
+        {
+            Id = user.Id,
+            Name = user.Name,
+            Email = user.Email,
+            Role = user.Role,
+            IsActive = user.IsActive
+        };
+    }
+}
