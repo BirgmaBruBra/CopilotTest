@@ -18,4 +18,9 @@ public class User
     public string Role { get; set; } = "User";
 
     public bool IsActive { get; set; } = true;
+
+    //proprety surname string
+    [Required]
+    [StringLength(100)]
+    public string Surname { get; set; } = string.Empty; 
 }
